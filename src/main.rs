@@ -1,9 +1,15 @@
 use dashmap::DashMap;
 use std::{env::var, sync::Arc};
 
-use actix_web::{App, HttpServer, web::{self, Data}};
-use log::{LevelFilter, info};
-use inmem_img::{models::{ImageConfig, State}, routes::{api_get_image, api_upload_image, get_image, not_found}};
+use actix_web::{
+  web::{self, Data},
+  App, HttpServer,
+};
+use inmem_img::{
+  models::{ImageConfig, State},
+  routes::{api_get_image, api_upload_image, api_get_stats, get_image, not_found},
+};
+use log::{info, LevelFilter};
 use simple_logger::SimpleLogger;
 
 #[actix_web::main]
@@ -24,7 +30,7 @@ async fn main() -> std::io::Result<()> {
 
   let state: Arc<State> = Arc::new(State {
     stored_images: DashMap::new(),
-    config: config.clone()
+    config: config.clone(),
   });
 
   HttpServer::new(move || {
@@ -32,6 +38,7 @@ async fn main() -> std::io::Result<()> {
       .app_data(Data::new(state.clone()))
       .service(api_upload_image)
       .service(api_get_image)
+      .service(api_get_stats)
       .service(get_image)
       .default_service(web::get().to(not_found))
   })
@@ -50,6 +57,9 @@ fn check_env() -> ImageConfig {
   ImageConfig {
     port: var("PORT").unwrap_or("3000".to_string()).parse().unwrap(),
     authorization: var("AUTHORIZATION").expect("no AUTHORIZATION env var"),
-    rand_length: var("RAND_LENGTH").unwrap_or("7".to_string()).parse().unwrap()
+    rand_length: var("RAND_LENGTH")
+      .unwrap_or("7".to_string())
+      .parse()
+      .unwrap(),
   }
 }
